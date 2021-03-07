@@ -5,5 +5,5 @@ authors = ["Giacomo Bagnoli <gbagnoli@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-diesel = { version = "1.4.4", features = ["postgres"] }
+diesel =         { version = "*", default-features = false, features = ["sqlite"] }
 dotenv = "0.15.0"

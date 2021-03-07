@@ -1,3 +1,5 @@
+use diesel::table;
+
 table! {
     allowed_ips (peer_vpn, peer_name, address) {
         peer_vpn -> Text,
