@@ -1,0 +1,23 @@
+-- This file should undo anything in `up.sql`
+PRAGMA foreign_keys=ON;
+DROP TRIGGER before_insert_check_if_pair_is_present_for_preshared_keys;
+DROP TRIGGER assign_a_vpn_the_next_index;
+DROP TRIGGER assign_a_peer_the_next_index;
+DROP TRIGGER after_insert_on_peers_add_allowed_ips;
+DROP TRIGGER after_update_on_peers_update_allowed_ips;
+DROP INDEX vpns_network_names_idx;
+DROP INDEX vpn_index_in_network;
+DROP INDEX peers_vpn_names_idx;
+DROP INDEX peers_index_in_vpn;
+DROP INDEX peers_statuses_idx;
+DROP INDEX allowed_ips_peers_idx;
+DROP INDEX preshared_keys_peers2_idx;
+DROP INDEX preshared_keys_peers1_idx;
+DROP INDEX preshared_keys_vpns_idx;
+DROP TABLE preshared_keys;
+DROP TABLE allowed_ips;
+DROP TABLE peers;
+DROP TABLE peer_statuses;
+DROP TABLE vpns;
+DROP TABLE networks;
+COMMIT;
