@@ -1,0 +1,11 @@
+name: vpnutils2
+about: Manage wireguard secrets and peers
+author: Giacomo Bagnoli <gbagnoli@gmail.com>
+
+args:
+  - database:
+      help: Database file
+      short: d
+      long: db
+      takes_value: true
+
