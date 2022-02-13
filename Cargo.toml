@@ -5,7 +5,8 @@ authors = ["Giacomo Bagnoli <gbagnoli@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-diesel =         { version = "*", default-features = false, features = ["sqlite"] }
+diesel = { version="*", default-features = false, features = ["sqlite"] }
 dotenv = "0.15.0"
-clap = {version= "3.0.14", features=["derive"]}
-libsqlite3-sys = {features=["bundled"], version="*"}
+clap = { version= "3.0.14", features=["derive"] }
+libsqlite3-sys = { features=["bundled"], version="*" }
+dialoguer = { version="0.10", features=["password", "completion", "history"] }
