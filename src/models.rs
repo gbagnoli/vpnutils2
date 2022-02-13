@@ -1,4 +1,5 @@
 use crate::schema::{allowed_ips, networks, peer_statuses, peers, preshared_keys, vpns};
+use diesel::{Associations, Identifiable, Queryable};
 
 #[derive(Identifiable, Queryable, PartialEq, Debug)]
 #[table_name = "networks"]
