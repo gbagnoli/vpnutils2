@@ -7,4 +7,4 @@ pub mod models;
 pub mod schema;
 
 pub use args::Cli;
-pub use connection::establish_connection;
+pub use connection::Database;

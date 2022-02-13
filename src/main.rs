@@ -12,9 +12,10 @@ fn main() {
         Err(_e) => {
             println!("Failed to read password");
             std::process::exit(1);
-        },
+        }
         Ok(p) => p,
     };
-
-    vpnutils::establish_connection(args.database_path, password);
+    let db = vpnutils::Database::new(args.database_path, password).unwrap();
+    println!("Connecting to database");
+    db.connect().unwrap();
 }
