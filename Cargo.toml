@@ -8,3 +8,4 @@ edition = "2018"
 diesel =         { version = "*", default-features = false, features = ["sqlite"] }
 dotenv = "0.15.0"
 clap = {version= "3.0.14", features=["derive"]}
+libsqlite3-sys = {features=["bundled"], version="*"}
