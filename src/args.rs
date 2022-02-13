@@ -4,7 +4,7 @@ use clap::Parser;
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 pub struct Cli {
-    /// sqlite database file
-    #[clap(short, long)]
-    pub database: Option<String>,
+    /// encrypted database file
+    #[clap(short, long, parse(from_os_str))]
+    pub database: std::path::PathBuf,
 }
