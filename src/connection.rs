@@ -8,6 +8,8 @@ use std::io::{Read, Write};
 embed_migrations!();
 
 pub struct Database {
+    // not used yet
+    #[allow(dead_code)]
     directory: tempfile::TempDir,
     database_path: String,
     backup_path: String,
@@ -15,8 +17,8 @@ pub struct Database {
     password: String,
 }
 
-fn path_to_string(path: &std::path::PathBuf) -> Result<String> {
-    match path.as_path().to_str().map(|s| s.to_string()) {
+fn path_to_string(path: &std::path::Path) -> Result<String> {
+    match path.to_str().map(|s| s.to_string()) {
         None => Err(anyhow::anyhow!("Cannot convert path UTF-8")),
         Some(x) => Ok(x),
     }
@@ -82,7 +84,7 @@ impl Database {
             .wrap_output(output)
             .with_context(|| format!("Setting up the encryptor for {}", self.source_path))?;
         input.read_to_end(&mut buffer)?;
-        writer.write(&buffer[..])?;
+        writer.write_all(&buffer[..])?;
         writer.finish()?;
         std::fs::remove_file(&self.backup_path)?;
         Ok(())
@@ -112,7 +114,7 @@ impl Database {
         reader
             .read_to_end(&mut buffer)
             .with_context(|| format!("Cannot read source file at {}", self.source_path))?;
-        output.write(&buffer[..])?;
+        output.write_all(&buffer[..])?;
         Ok(())
     }
 
