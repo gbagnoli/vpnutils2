@@ -1,5 +1,5 @@
 extern crate dotenv;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::Parser;
 use dialoguer::{theme::ColorfulTheme, Password};
 
@@ -10,14 +10,14 @@ fn main() -> Result<()> {
         .with_prompt("Database Password")
         .interact()?;
 
-    // let db = vpnutils::Database::create(args.database_path, password)?;
     match vpnutils::Database::open(args.database_path.clone(), password.clone()) {
         Ok(db) => {
             println!("Connecting to database");
             db.connect()?;
-            db.save()
+            db.save().context("Cannot save database")
         }
         Err(_) => {
+            // TODO match error
             vpnutils::Database::create(args.database_path, password)?;
             Ok(())
         }

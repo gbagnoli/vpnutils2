@@ -1,9 +1,10 @@
 use age::secrecy::Secret;
-use anyhow::{Context, Result};
+use anyhow::Context;
 use diesel::sqlite::SqliteConnection;
 use diesel::Connection;
 use std::fs::File;
 use std::io::{Read, Write};
+use thiserror::Error;
 
 embed_migrations!();
 
@@ -17,14 +18,52 @@ pub struct Database {
     password: String,
 }
 
+#[derive(Error, Debug)]
+pub enum DatabaseError {
+    #[error("Cannot convert UTF-8 path `{0}`")]
+    CannotConvertPath(String),
+    #[error("File does not exist: `{0}`")]
+    FileDoesNotExist(String),
+    #[error("IO Error")]
+    IoError(#[from] std::io::Error),
+    #[error("Cannot connect to database")]
+    ConnectionError(#[from] diesel::ConnectionError),
+    #[error("Cannot run migrations on database")]
+    MigrationsError(#[from] diesel_migrations::RunMigrationsError),
+    #[error("Error while encrypting file")]
+    EncryptError(#[from] age::EncryptError),
+    #[error("Decrypt error: corrupt file or wrong password")]
+    DecryptError(#[from] age::DecryptError),
+    #[error(transparent)]
+    Other(#[from] anyhow::Error),
+}
+type Result<T> = std::result::Result<T, DatabaseError>;
+
 fn path_to_string(path: &std::path::Path) -> Result<String> {
-    match path.to_str().map(|s| s.to_string()) {
-        None => Err(anyhow::anyhow!("Cannot convert path UTF-8")),
-        Some(x) => Ok(x),
-    }
+    Ok(path
+        .to_str()
+        .map(|s| s.to_string())
+        .ok_or(DatabaseError::Other(anyhow::anyhow!(
+            "Cannot convert path UTF-8"
+        )))?)
 }
 
 impl Database {
+    fn new(source: std::path::PathBuf, password: String) -> Result<Self> {
+        let dir = tempfile::tempdir()?;
+        let db_path = path_to_string(&dir.path().join("database.db"))?;
+        let backup_path = path_to_string(&dir.path().join("backup.db"))?;
+        let source_path = path_to_string(&source)?;
+        let db = Database {
+            directory: dir,
+            database_path: db_path,
+            backup_path,
+            source_path,
+            password,
+        };
+        Ok(db)
+    }
+
     pub fn create(source: std::path::PathBuf, password: String) -> Result<Self> {
         let db = Self::new(source, password)?;
         // need to create a new file with diesel setup
@@ -43,21 +82,6 @@ impl Database {
         Ok(db)
     }
 
-    fn new(source: std::path::PathBuf, password: String) -> Result<Self> {
-        let dir = tempfile::tempdir()?;
-        let db_path = path_to_string(&dir.path().join("database.db"))?;
-        let backup_path = path_to_string(&dir.path().join("backup.db"))?;
-        let source_path = path_to_string(&source)?;
-        let db = Database {
-            directory: dir,
-            database_path: db_path,
-            backup_path,
-            source_path,
-            password,
-        };
-        Ok(db)
-    }
-
     pub fn connect(&self) -> Result<SqliteConnection> {
         let conn = SqliteConnection::establish(&self.database_path)
             .context("Cannot open sqlite database")?;
@@ -72,17 +96,13 @@ impl Database {
     }
 
     fn encrypt(&self) -> Result<()> {
-        let mut input = File::open(&self.backup_path)
-            .with_context(|| format!("Trying to open the backup file {}", self.backup_path))?;
-        let output = File::create(&self.source_path)
-            .with_context(|| format!("Trying to open the source file {}", self.source_path))?;
+        let mut input = File::open(&self.backup_path)?;
+        let output = File::create(&self.source_path)?;
 
         println!("Encrypting database to {}", self.source_path);
         let mut buffer = vec![];
         let encryptor = age::Encryptor::with_user_passphrase(Secret::new(self.password.to_owned()));
-        let mut writer = encryptor
-            .wrap_output(output)
-            .with_context(|| format!("Setting up the encryptor for {}", self.source_path))?;
+        let mut writer = encryptor.wrap_output(output)?;
         input.read_to_end(&mut buffer)?;
         writer.write_all(&buffer[..])?;
         writer.finish()?;
@@ -91,29 +111,16 @@ impl Database {
     }
 
     fn decrypt(&self) -> Result<()> {
-        let input = File::open(&self.source_path)
-            .with_context(|| format!("Trying to open the source file {}", self.source_path))?;
-        let mut output = File::create(&self.database_path).with_context(|| {
-            format!(
-                "Trying to create the destination file {}",
-                self.database_path
-            )
-        })?;
+        let input = File::open(&self.source_path)?;
+        let mut output = File::create(&self.database_path)?;
         println!("Decrypting database from {}", self.source_path);
-        let decryptor = match age::Decryptor::new(&input).with_context(|| {
-            format!(
-                "While setting up decryptor for file at {}",
-                self.source_path
-            )
-        })? {
+        let decryptor = match age::Decryptor::new(&input)? {
             age::Decryptor::Passphrase(d) => d,
             _ => unreachable!(),
         };
         let mut reader = decryptor.decrypt(&Secret::new(self.password.to_owned()), None)?;
         let mut buffer = vec![];
-        reader
-            .read_to_end(&mut buffer)
-            .with_context(|| format!("Cannot read source file at {}", self.source_path))?;
+        reader.read_to_end(&mut buffer)?;
         output.write_all(&buffer[..])?;
         Ok(())
     }
