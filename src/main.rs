@@ -9,17 +9,23 @@ fn main() -> Result<()> {
     let password = Password::with_theme(&ColorfulTheme::default())
         .with_prompt("Database Password")
         .interact()?;
-
     match vpnutils::Database::open(args.database_path.clone(), password.clone()) {
         Ok(db) => {
             println!("Connecting to database");
             db.connect()?;
             db.save().context("Cannot save database")
         }
-        Err(_) => {
-            // TODO match error
-            vpnutils::Database::create(args.database_path, password)?;
-            Ok(())
-        }
+        Err(e) => match e {
+            vpnutils::DatabaseError::OpenError { source: _, path } => {
+                println!("Database {} does not exist - creating", path);
+                vpnutils::Database::create(args.database_path, password)
+                    .context("cannot create database")?;
+                Ok(())
+            }
+            vpnutils::DatabaseError::DecryptError(_) => {
+                Err(anyhow::anyhow!("Invalid password, cannot decrypt"))
+            }
+            _ => Err(anyhow::anyhow!("Unknown error")),
+        },
     }
 }

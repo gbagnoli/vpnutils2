@@ -11,4 +11,4 @@ pub mod models;
 pub mod schema;
 
 pub use args::Cli;
-pub use connection::Database;
+pub use connection::{Database, DatabaseError};

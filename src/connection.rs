@@ -20,12 +20,20 @@ pub struct Database {
 
 #[derive(Error, Debug)]
 pub enum DatabaseError {
-    #[error("Cannot convert UTF-8 path `{0}`")]
-    CannotConvertPath(String),
-    #[error("File does not exist: `{0}`")]
-    FileDoesNotExist(String),
+    #[error("Cannot convert UTF-8 path")]
+    CannotConvertPath(),
+    #[error("Cannot open database file at `{path}`")]
+    OpenError {
+        source: std::io::Error,
+        path: String,
+    },
+    #[error("Cannot create database file at `{path}`")]
+    CreateError {
+        source: std::io::Error,
+        path: String,
+    },
     #[error("IO Error")]
-    IoError(#[from] std::io::Error),
+    IOError(#[from] std::io::Error),
     #[error("Cannot connect to database")]
     ConnectionError(#[from] diesel::ConnectionError),
     #[error("Cannot run migrations on database")]
@@ -43,9 +51,7 @@ fn path_to_string(path: &std::path::Path) -> Result<String> {
     Ok(path
         .to_str()
         .map(|s| s.to_string())
-        .ok_or(DatabaseError::Other(anyhow::anyhow!(
-            "Cannot convert path UTF-8"
-        )))?)
+        .ok_or(DatabaseError::CannotConvertPath())?)
 }
 
 impl Database {
@@ -68,8 +74,9 @@ impl Database {
         let db = Self::new(source, password)?;
         // need to create a new file with diesel setup
         // then move it to the temp directory, and save it
+        println!("Creating new database...");
         let conn = SqliteConnection::establish(&db.database_path)?;
-        println!("Running migrations on new db at {}", db.database_path);
+        println!("Running migrations...");
         embedded_migrations::run(&conn)?;
         db.save()?;
         Ok(db)
@@ -97,7 +104,11 @@ impl Database {
 
     fn encrypt(&self) -> Result<()> {
         let mut input = File::open(&self.backup_path)?;
-        let output = File::create(&self.source_path)?;
+        let output =
+            File::create(&self.source_path).map_err(|source| DatabaseError::CreateError {
+                source,
+                path: self.source_path.clone(),
+            })?;
 
         println!("Encrypting database to {}", self.source_path);
         let mut buffer = vec![];
@@ -111,7 +122,10 @@ impl Database {
     }
 
     fn decrypt(&self) -> Result<()> {
-        let input = File::open(&self.source_path)?;
+        let input = File::open(&self.source_path).map_err(|source| DatabaseError::OpenError {
+            source,
+            path: self.source_path.clone(),
+        })?;
         let mut output = File::create(&self.database_path)?;
         println!("Decrypting database from {}", self.source_path);
         let decryptor = match age::Decryptor::new(&input)? {
@@ -129,7 +143,7 @@ impl Database {
         let conn = self.connect()?;
         // this is an alternative to the backup API https://www.sqlite.org/lang_vacuum.html#vacuuminto
         let sql = format!("VACUUM main INTO '{}'", self.backup_path);
-        println!("Saving database to {}", self.backup_path);
+        println!("Saving database to temporary location {}", self.backup_path);
         conn.execute(&sql)
             .with_context(|| format!("Error while calling VACUUM: {}", sql))?;
         Ok(())
