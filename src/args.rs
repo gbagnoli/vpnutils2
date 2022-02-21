@@ -7,6 +7,10 @@ pub struct Cli {
     /// encrypted database file
     #[clap(short, long, parse(from_os_str), env = "DATABASE_PATH")]
     pub database_path: std::path::PathBuf,
+}
+
+#[derive(Parser, Debug)]
+pub struct CommandParser {
     #[clap(subcommand)]
     pub command: Commands,
 }
@@ -28,6 +32,10 @@ pub enum Commands {
         #[clap(subcommand)]
         command: Peer,
     },
+    /// Save the database
+    Save {},
+    /// Quit the application
+    Quit {},
 }
 
 #[derive(Subcommand, Debug)]
