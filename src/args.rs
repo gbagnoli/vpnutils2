@@ -36,21 +36,30 @@ pub enum Network {
     List {},
     /// Add a network
     Add {
+        /// Name of the new network, must be unique
         name: String,
-        ipv4: String,
-        ipv6: String,
+        /// Ipv4 Network from where to create subnets for vpns
+        #[clap(long, short = '4')]
+        ipv4: ipnet::Ipv4Net,
+        /// Ipv6 Network from where to create subnets for vpns
+        #[clap(long, short = '6')]
+        ipv6: ipnet::Ipv6Net,
     },
     /// Remove a network
     Remove { name: String },
     /// Update an existing network
     Update {
+        /// Existing name of the network to modify
         name: String,
+        /// New name to assign to the network
         #[clap(short, long)]
         new_name: Option<String>,
-        #[clap(long)]
-        ipv4: Option<String>,
-        #[clap(long)]
-        ipv6: Option<String>,
+        /// Ipv4 Network from where to create subnets for vpns
+        #[clap(long, short = '4')]
+        ipv4: Option<ipnet::Ipv4Net>,
+        /// Ipv6 Network from where to create subnets for vpns
+        #[clap(long, short = '6')]
+        ipv6: Option<ipnet::Ipv6Net>,
     },
 }
 
@@ -69,23 +78,27 @@ pub enum Vpn {
         /// name of the new VPN
         name: String,
         /// new ipv4 subnet to assign
-        #[clap(long)]
-        ipv4: Option<String>,
+        #[clap(long, short = '4')]
+        ipv4: Option<ipnet::Ipv4Net>,
         /// new ipv6 subnet to assign
-        #[clap(long)]
-        ipv6: Option<String>,
+        #[clap(long, short = '6')]
+        ipv6: Option<ipnet::Ipv6Net>,
     },
     /// Remove a VPN. VPNs can be removed only if they don't have peers
     Remove { name: String },
     /// Update an existing network
     Update {
+        /// name of (existing) vpn
         name: String,
+        /// new name to assign to vpn
         #[clap(short, long)]
         new_name: Option<String>,
-        #[clap(long)]
-        ipv4: Option<String>,
-        #[clap(long)]
-        ipv6: Option<String>,
+        /// new ipv4 subnet to assign
+        #[clap(long, short = '4')]
+        ipv4: Option<ipnet::Ipv4Net>,
+        /// new ipv6 subnet to assign
+        #[clap(long, short = '6')]
+        ipv6: Option<ipnet::Ipv6Net>,
     },
 }
 
@@ -124,11 +137,11 @@ pub enum Peer {
         #[clap(short = 'P', long)]
         privatekey: Option<String>,
         /// new ipv4 to assign
-        #[clap(long)]
-        ipv4: Option<String>,
+        #[clap(long, short = '4')]
+        ipv4: Option<std::net::Ipv4Addr>,
         /// new ipv6 to assign
-        #[clap(long)]
-        ipv6: Option<String>,
+        #[clap(long, short = '6')]
+        ipv6: Option<std::net::Ipv6Addr>,
     },
     /// remove a peer from a VPN
     Remove {
@@ -161,10 +174,10 @@ pub enum Peer {
         #[clap(short = 'P', long)]
         privatekey: Option<String>,
         /// new ipv4 to assign
-        #[clap(long)]
-        ipv4: Option<String>,
+        #[clap(long, short = '4')]
+        ipv4: Option<std::net::Ipv4Addr>,
         /// new ipv6 to assign
-        #[clap(long)]
-        ipv6: Option<String>,
+        #[clap(long, short = '6')]
+        ipv6: Option<std::net::Ipv6Addr>,
     },
 }

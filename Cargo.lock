@@ -57,9 +57,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.54"
+version = "1.0.55"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a99269dff3bc004caa411f38845c20303f1e393ca2bd6581576fa3a7f59577d"
+checksum = "159bb86af3a200e19a068f4224eae4c8bb2d0fa054c7e5d1cacd5cef95e684cd"
 
 [[package]]
 name = "atty"
@@ -595,6 +595,12 @@ dependencies = [
  "tinystr",
  "unic-langid",
 ]
+
+[[package]]
+name = "ipnet"
+version = "2.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "68f2d64f2edebec4ce84ad108148e67e1064789bee435edc5b60ad398714a3a9"
 
 [[package]]
 name = "lazy_static"
@@ -1262,6 +1268,7 @@ dependencies = [
  "diesel",
  "diesel_migrations",
  "dotenv",
+ "ipnet",
  "libsqlite3-sys",
  "tempfile",
  "thiserror",
