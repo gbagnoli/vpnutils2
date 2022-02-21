@@ -48,10 +48,9 @@ pub enum DatabaseError {
 type Result<T> = std::result::Result<T, DatabaseError>;
 
 fn path_to_string(path: &std::path::Path) -> Result<String> {
-    Ok(path
-        .to_str()
+    path.to_str()
         .map(|s| s.to_string())
-        .ok_or(DatabaseError::CannotConvertPath())?)
+        .ok_or(DatabaseError::CannotConvertPath())
 }
 
 impl Database {
