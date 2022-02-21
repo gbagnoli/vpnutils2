@@ -4,11 +4,11 @@ extern crate diesel;
 extern crate diesel_migrations;
 
 mod args;
-mod connection;
+mod database;
 
 #[allow(clippy::unused_unit)]
 pub mod models;
 pub mod schema;
 
 pub use args::Cli;
-pub use connection::{Database, DatabaseError};
+pub use database::{Database, DatabaseError};
