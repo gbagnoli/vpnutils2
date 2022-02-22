@@ -33,9 +33,9 @@ pub enum Commands {
         command: Peer,
     },
     /// Save the database
-    Save {},
+    Save,
     /// Quit the application
-    Quit {},
+    Quit,
 }
 
 #[derive(Subcommand, Debug)]

@@ -10,5 +10,5 @@ mod database;
 pub mod models;
 pub mod schema;
 
-pub use args::Cli;
+pub use args::{Cli, CommandParser, Commands};
 pub use database::{Database, DatabaseError};
