@@ -2,6 +2,7 @@ use age::secrecy::Secret;
 use anyhow::Context;
 use diesel::sqlite::SqliteConnection;
 use diesel::Connection;
+use path_absolutize::*;
 use std::fs::File;
 use std::io::{Read, Write};
 use thiserror::Error;
@@ -58,7 +59,8 @@ impl Database {
         let dir = tempfile::tempdir()?;
         let db_path = path_to_string(&dir.path().join("database.db"))?;
         let temp_backup_path = path_to_string(&dir.path().join("backup.db"))?;
-        let source_path = path_to_string(&path)?;
+        // use path_absolutize crate as std::fs::canonicalize needs an existing file
+        let source_path = path_to_string(&path.absolutize()?)?;
         let db = Database {
             temp_dir: dir,
             temp_db_path: db_path,
