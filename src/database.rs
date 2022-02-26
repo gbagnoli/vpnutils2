@@ -11,9 +11,9 @@ embed_migrations!();
 pub struct Database {
     // not used yet
     #[allow(dead_code)]
-    directory: tempfile::TempDir,
-    database_path: String,
-    backup_path: String,
+    temp_dir: tempfile::TempDir,
+    temp_db_path: String,
+    temp_backup_path: String,
     source_path: String,
     password: String,
 }
@@ -54,42 +54,42 @@ fn path_to_string(path: &std::path::Path) -> Result<String> {
 }
 
 impl Database {
-    fn new(source: std::path::PathBuf, password: String) -> Result<Self> {
+    fn new(path: std::path::PathBuf, password: String) -> Result<Self> {
         let dir = tempfile::tempdir()?;
         let db_path = path_to_string(&dir.path().join("database.db"))?;
-        let backup_path = path_to_string(&dir.path().join("backup.db"))?;
-        let source_path = path_to_string(&source)?;
+        let temp_backup_path = path_to_string(&dir.path().join("backup.db"))?;
+        let source_path = path_to_string(&path)?;
         let db = Database {
-            directory: dir,
-            database_path: db_path,
-            backup_path,
+            temp_dir: dir,
+            temp_db_path: db_path,
+            temp_backup_path,
             source_path,
             password,
         };
         Ok(db)
     }
 
-    pub fn create(source: std::path::PathBuf, password: String) -> Result<Self> {
-        let db = Self::new(source, password)?;
+    pub fn create(path: std::path::PathBuf, password: String) -> Result<Self> {
+        let db = Self::new(path, password)?;
         // need to create a new file with diesel setup
-        // then move it to the temp directory, and save it
+        // then move it to the temp temp_dir, and save it
         println!("Creating new database...");
-        let conn = SqliteConnection::establish(&db.database_path)?;
+        let conn = SqliteConnection::establish(&db.temp_db_path)?;
         println!("Running migrations...");
         embedded_migrations::run(&conn)?;
         db.save()?;
         Ok(db)
     }
 
-    pub fn open(source: std::path::PathBuf, password: String) -> Result<Self> {
-        let db = Self::new(source, password)?;
+    pub fn open(path: std::path::PathBuf, password: String) -> Result<Self> {
+        let db = Self::new(path, password)?;
         db.decrypt()?;
         embedded_migrations::run(&db.connect()?)?;
         Ok(db)
     }
 
     pub fn connect(&self) -> Result<SqliteConnection> {
-        let conn = SqliteConnection::establish(&self.database_path)
+        let conn = SqliteConnection::establish(&self.temp_db_path)
             .context("Cannot open sqlite database")?;
         conn.execute("PRAGMA foreign_keys = ON")
             .context("Error trying to enable foreign keys")?;
@@ -101,12 +101,17 @@ impl Database {
         self.encrypt()
     }
 
+    pub fn path(&self) -> String {
+        // the "public" path is the source
+        self.source_path.clone()
+    }
+
     fn encrypt(&self) -> Result<()> {
-        let mut input = File::open(&self.backup_path)?;
+        let mut input = File::open(&self.temp_backup_path)?;
         let output =
             File::create(&self.source_path).map_err(|source| DatabaseError::CreateError {
                 source,
-                path: self.source_path.clone(),
+                path: self.path(),
             })?;
 
         println!("Encrypting database to {}", self.source_path);
@@ -116,16 +121,16 @@ impl Database {
         input.read_to_end(&mut buffer)?;
         writer.write_all(&buffer[..])?;
         writer.finish()?;
-        std::fs::remove_file(&self.backup_path)?;
+        std::fs::remove_file(&self.temp_backup_path)?;
         Ok(())
     }
 
     fn decrypt(&self) -> Result<()> {
         let input = File::open(&self.source_path).map_err(|source| DatabaseError::OpenError {
             source,
-            path: self.source_path.clone(),
+            path: self.path(),
         })?;
-        let mut output = File::create(&self.database_path)?;
+        let mut output = File::create(&self.temp_db_path)?;
         println!("Decrypting database from {}", self.source_path);
         let decryptor = match age::Decryptor::new(&input)? {
             age::Decryptor::Passphrase(d) => d,
@@ -141,8 +146,11 @@ impl Database {
     fn backup(&self) -> Result<()> {
         let conn = self.connect()?;
         // this is an alternative to the backup API https://www.sqlite.org/lang_vacuum.html#vacuuminto
-        let sql = format!("VACUUM main INTO '{}'", self.backup_path);
-        println!("Saving database to temporary location {}", self.backup_path);
+        let sql = format!("VACUUM main INTO '{}'", self.temp_backup_path);
+        println!(
+            "Saving database to temporary location {}",
+            self.temp_backup_path
+        );
         conn.execute(&sql)
             .with_context(|| format!("Error while calling VACUUM: {}", sql))?;
         Ok(())

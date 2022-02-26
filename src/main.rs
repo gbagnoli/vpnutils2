@@ -8,10 +8,10 @@ use rustyline::{ColorMode, Editor};
 use vpnutils::{Cli, CommandParser, Commands, Database};
 
 fn run(db: vpnutils::Database, history_file: String) -> Result<()> {
-    // TODO add completer
     let mut rl = Editor::<()>::new();
+    println!("Loading history from {}", history_file);
     if rl.load_history(&history_file).is_err() {
-        println!("History file at {} will be created", history_file);
+        // try saving it empty
         rl.save_history(&history_file)?;
     }
     rl.set_color_mode(ColorMode::Enabled);
@@ -85,7 +85,6 @@ fn main() -> Result<()> {
         .with_prompt("Database Password")
         .interact()?;
     let xdg_dirs = xdg::BaseDirectories::with_prefix("vpnutils")?;
-    let history_path = xdg_dirs.place_config_file("history.txt")?;
     let db = match Database::open(args.database_path.clone(), password.clone()) {
         Ok(db) => {
             println!("Connecting to database");
@@ -104,7 +103,11 @@ fn main() -> Result<()> {
             _ => return Err(anyhow::anyhow!("Unknown error")),
         },
     };
-    // FIXME
-    let history_file = history_path.into_os_string().into_string().unwrap();
+    let history_filename = format!("history_{}.txt", str::replace(&db.path(), "/", "__"));
+    let history_path = xdg_dirs.place_config_file(history_filename)?;
+    let history_file = history_path
+        .into_os_string()
+        .into_string()
+        .map_err(|err| anyhow::anyhow!("cannot part history path: {:?}", err))?;
     run(db, history_file)
 }
