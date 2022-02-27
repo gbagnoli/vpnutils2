@@ -80,11 +80,7 @@ fn main() -> Result<()> {
         .interact()?;
     let xdg_dirs = xdg::BaseDirectories::with_prefix("vpnutils")?;
     let db = match Database::open(args.database_path.clone(), password.clone()) {
-        Ok(db) => {
-            println!("Connecting to database");
-            db.connect()?;
-            db
-        }
+        Ok(db) => db,
         Err(e) => match e {
             vpnutils::DatabaseError::OpenError { source: _, path } => {
                 println!("Database {} does not exist - creating", path);

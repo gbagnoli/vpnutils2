@@ -1,5 +1,10 @@
+use crate::models;
+use crate::schema;
+
 use anyhow::Result;
 use clap::{ArgEnum, Subcommand};
+use diesel::sqlite::SqliteConnection;
+use diesel::RunQueryDsl;
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
@@ -26,6 +31,7 @@ pub enum Commands {
 
 impl Commands {
     pub fn dispatch(&self, db: &crate::Database) -> Result<bool> {
+        let conn = db.connect()?;
         match self {
             Commands::Quit => {
                 println!("Quitting ... ");
@@ -35,10 +41,9 @@ impl Commands {
                 db.save()?;
                 Ok(true)
             }
-            _ => {
-                println!("Not implemented: {:?}", self);
-                Ok(true)
-            }
+            Commands::Network { command } => command.dispatch(conn),
+            Commands::Vpn { command } => command.dispatch(conn),
+            Commands::Peer { command } => command.dispatch(conn),
         }
     }
 }
@@ -74,6 +79,19 @@ pub enum Network {
         #[clap(long, short = '6')]
         ipv6: Option<ipnet::Ipv6Net>,
     },
+}
+
+impl Network {
+    fn dispatch(&self, conn: SqliteConnection) -> Result<bool> {
+        use schema::networks::dsl::*;
+        match self {
+            Network::List {} => {
+                networks.load::<models::Network>(&conn)?;
+                Ok(true)
+            }
+            _ => Err(anyhow::anyhow!("not implemented")),
+        }
+    }
 }
 
 #[derive(Subcommand, Debug)]
@@ -113,6 +131,12 @@ pub enum Vpn {
         #[clap(long, short = '6')]
         ipv6: Option<ipnet::Ipv6Net>,
     },
+}
+
+impl Vpn {
+    fn dispatch(&self, _conn: SqliteConnection) -> Result<bool> {
+        Err(anyhow::anyhow!("not implemented"))
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum, Debug)]
@@ -193,4 +217,10 @@ pub enum Peer {
         #[clap(long, short = '6')]
         ipv6: Option<std::net::Ipv6Addr>,
     },
+}
+
+impl Peer {
+    fn dispatch(&self, _conn: SqliteConnection) -> Result<bool> {
+        Err(anyhow::anyhow!("not implemented"))
+    }
 }
