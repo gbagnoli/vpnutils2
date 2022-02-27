@@ -5,7 +5,7 @@ use dialoguer::{theme::ColorfulTheme, Password};
 use rustyline::config::Configurer;
 use rustyline::error::ReadlineError;
 use rustyline::{ColorMode, Editor};
-use vpnutils::{Cli, CommandParser, Commands, Database};
+use vpnutils::{Cli, CommandParser, Database};
 
 fn run(db: vpnutils::Database, history_file: String) -> Result<()> {
     let mut rl = Editor::<()>::new();
@@ -34,25 +34,19 @@ fn run(db: vpnutils::Database, history_file: String) -> Result<()> {
                         continue;
                     }
                 };
-                // on successful parse, save the history to file
-                // we don't auto add to history because we don't want to add
-                // invalid commands to the history file. Unfortunately, this
-                // also exclude "help" commands to be added.
+                // on successful parse, save the history to file we don't auto add to history
+                // because we don't want to add invalid commands to the history file.
+                // Unfortunately, this also exclude "help" commands from being added.
                 rl.add_history_entry(line.as_str());
                 rl.append_history(&history_file)?;
-                let result = match args.command {
-                    Commands::Quit => {
-                        println!("bye");
+                let result = args.command.dispatch(&db);
+                match result {
+                    Ok(should_continue) => {
+                        if should_continue {
+                            continue;
+                        }
                         break;
                     }
-                    Commands::Save => db.save(),
-                    _ => {
-                        println!("Not implemented: {:?}", args.command);
-                        continue;
-                    }
-                };
-                match result {
-                    Ok(_) => continue,
                     Err(e) => {
                         println!("Error: {e}");
                         continue;
