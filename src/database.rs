@@ -33,6 +33,8 @@ pub enum DatabaseError {
         source: std::io::Error,
         path: String,
     },
+    #[error("Database exists")]
+    DatabaseExists(),
     #[error("IO Error")]
     IOError(#[from] std::io::Error),
     #[error("Cannot connect to database")]
@@ -55,12 +57,14 @@ fn path_to_string(path: &std::path::Path) -> Result<String> {
 }
 
 impl Database {
-    fn new(path: std::path::PathBuf, password: String) -> Result<Self> {
+    fn new<P: Into<std::path::PathBuf>>(path: P, password: String) -> Result<Self> {
         let dir = tempfile::tempdir()?;
         let db_path = path_to_string(&dir.path().join("database.db"))?;
         let temp_backup_path = path_to_string(&dir.path().join("backup.db"))?;
+        // need to convert explicitely to pathbuf to make absolutize work
+        let src: std::path::PathBuf = path.into();
         // use path_absolutize crate as std::fs::canonicalize needs an existing file
-        let source_path = path_to_string(&path.absolutize()?)?;
+        let source_path = path_to_string(&src.absolutize()?)?;
         let db = Database {
             temp_dir: dir,
             temp_db_path: db_path,
@@ -71,8 +75,12 @@ impl Database {
         Ok(db)
     }
 
-    pub fn create(path: std::path::PathBuf, password: String) -> Result<Self> {
-        let db = Self::new(path, password)?;
+    pub fn create<P: Into<std::path::PathBuf>>(path: P, password: String) -> Result<Self> {
+        let pbuf = path.into();
+        if pbuf.as_path().exists() {
+            return Err(DatabaseError::DatabaseExists {});
+        }
+        let db = Self::new(pbuf, password)?;
         // need to create a new file with diesel setup
         // then move it to the temp temp_dir, and save it
         println!("Creating new database...");
@@ -83,7 +91,7 @@ impl Database {
         Ok(db)
     }
 
-    pub fn open(path: std::path::PathBuf, password: String) -> Result<Self> {
+    pub fn open<P: Into<std::path::PathBuf>>(path: P, password: String) -> Result<Self> {
         let db = Self::new(path, password)?;
         db.decrypt()?;
         embedded_migrations::run(&db.connect()?)?;
