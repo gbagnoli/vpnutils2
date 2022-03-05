@@ -1,4 +1,3 @@
-extern crate dotenv;
 use anyhow::{Context, Result};
 use clap::Parser;
 use dialoguer::{theme::ColorfulTheme, Password};
